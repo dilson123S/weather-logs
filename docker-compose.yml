@@ -1,0 +1,190 @@
+# ============================================================
+# Weather Station Log Management System
+# docker-compose.yml
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # RabbitMQ Broker con Management UI
+  # ----------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: weather_rabbitmq
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-admin123}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
+      - "15692:15692"  # Prometheus metrics
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - weather_net
+
+  # ----------------------------------------------------------
+  # PostgreSQL Base de datos
+  # ----------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: weather_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-weather_db}
+      POSTGRES_USER: ${POSTGRES_USER:-weather_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weather_pass}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-weather_user} -d ${POSTGRES_DB:-weather_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - weather_net
+
+  # ----------------------------------------------------------
+  # Productor de datos de estaciones meteorológicas
+  # ----------------------------------------------------------
+  producer:
+    build:
+      context: ./producer
+      dockerfile: Dockerfile
+    container_name: weather_producer
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-admin123}
+      RABBITMQ_EXCHANGE: weather.exchange
+      RABBITMQ_ROUTING_KEY: weather.station
+      PUBLISH_INTERVAL: ${PUBLISH_INTERVAL:-3}
+      STATIONS_COUNT: ${STATIONS_COUNT:-5}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - weather_net
+
+  # ----------------------------------------------------------
+  # Consumidor / Procesador de mensajes
+  # ----------------------------------------------------------
+  consumer:
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-admin123}
+      RABBITMQ_QUEUE: weather.logs
+      RABBITMQ_EXCHANGE: weather.exchange
+      RABBITMQ_ROUTING_KEY: "weather.#"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-weather_db}
+      POSTGRES_USER: ${POSTGRES_USER:-weather_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weather_pass}
+      PREFETCH_COUNT: 1
+      # Umbrales para alertas
+      TEMP_MIN: -50
+      TEMP_MAX: 60
+      HUMIDITY_MIN: 0
+      HUMIDITY_MAX: 100
+      PRESSURE_MIN: 870
+      PRESSURE_MAX: 1084
+      WIND_MAX: 120
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      replicas: 2   # Escalabilidad horizontal
+    networks:
+      - weather_net
+
+  # ----------------------------------------------------------
+  # Prometheus – Recolección de métricas
+  # ----------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: weather_prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+    networks:
+      - weather_net
+
+  # ----------------------------------------------------------
+  # Grafana – Dashboards de visualización
+  # ----------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: weather_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASS:-grafana123}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - weather_net
+
+# ----------------------------------------------------------
+# Redes
+# ----------------------------------------------------------
+networks:
+  weather_net:
+    driver: bridge
+
+# ----------------------------------------------------------
+# Volúmenes persistentes
+# ----------------------------------------------------------
+volumes:
+  rabbitmq_data:
+    driver: local
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

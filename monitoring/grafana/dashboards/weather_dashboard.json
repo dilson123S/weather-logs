@@ -1,0 +1,71 @@
+{
+  "title": "Weather Stations Dashboard",
+  "uid": "weather_dashboard",
+  "tags": ["weather", "logs"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Temperatura (°C)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 9 },
+      "datasource": { "type": "postgres", "uid": "postgres_weather" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(station_ts, '5s'), station_name AS metric, AVG(temperature) AS value FROM weather_logs WHERE $__timeFilter(station_ts) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Velocidad del Viento (km/h)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 9 },
+      "datasource": { "type": "postgres", "uid": "postgres_weather" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(station_ts, '5s'), station_name AS metric, AVG(wind_speed) AS value FROM weather_logs WHERE $__timeFilter(station_ts) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Registro de Alertas Críticas Recientes",
+      "gridPos": { "x": 0, "y": 9, "w": 24, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "postgres_weather" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT created_at AS \"Time\", station_name AS \"Station\", alert_type AS \"Type\", severity AS \"Severity\", message AS \"Message\" FROM v_recent_alerts WHERE $__timeFilter(created_at) ORDER BY created_at DESC"
+        }
+      ]
+    }
+  ]
+}

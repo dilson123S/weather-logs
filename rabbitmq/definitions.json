@@ -1,0 +1,94 @@
+{
+  "rabbit_version": "3.13.0",
+  "users": [
+    {
+      "name": "admin",
+      "password": "admin123",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "permissions": [
+    {
+      "user": "admin",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "weather.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "weather.dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "weather.logs",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "weather.dlx",
+        "x-dead-letter-routing-key": "weather.dead",
+        "x-message-ttl": 86400000,
+        "x-max-length": 100000
+      }
+    },
+    {
+      "name": "weather.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "weather.exchange",
+      "vhost": "/",
+      "destination": "weather.logs",
+      "destination_type": "queue",
+      "routing_key": "weather.#",
+      "arguments": {}
+    },
+    {
+      "source": "weather.dlx",
+      "vhost": "/",
+      "destination": "weather.dead",
+      "destination_type": "queue",
+      "routing_key": "weather.dead",
+      "arguments": {}
+    }
+  ],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "ha-weather",
+      "pattern": "weather.*",
+      "definition": {
+        "ha-mode": "all",
+        "ha-sync-mode": "automatic"
+      },
+      "priority": 0,
+      "apply-to": "queues"
+    }
+  ]
+}
