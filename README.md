@@ -6,7 +6,7 @@ Sistema distribuido de gestión de logs de estaciones meteorológicas basado en 
 
 ## Arquitectura del sistema
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         Docker Network: weather_net                  │
 │                                                                      │
@@ -28,7 +28,7 @@ Sistema distribuido de gestión de logs de estaciones meteorológicas basado en 
 │  │   :3000      │    │   :9090      │        └──────────────────┘  │
 │  └──────────────┘    └──────────────┘                              │
 └─────────────────────────────────────────────────────────────────────┘
-```
+```text
 
 ### Flujo de datos
 
@@ -69,10 +69,10 @@ docker compose up -d --build
 ### URLs de acceso
 
 | Servicio | URL | Credenciales |
-|----------|-----|-------------|
-| RabbitMQ Management | http://localhost:15672 | admin / admin123 |
-| Grafana | http://localhost:3000 | admin / grafana123 |
-| Prometheus | http://localhost:9090 | — |
+| --- | --- | --- |
+| RabbitMQ Management | [http://localhost:15672](http://localhost:15672) | admin / admin123 |
+| Grafana | [http://localhost:3000](http://localhost:3000) | admin / grafana123 |
+| Prometheus | [http://localhost:9090](http://localhost:9090) | — |
 | PostgreSQL | localhost:5432 | weather_user / weather_pass |
 
 ---
@@ -121,7 +121,7 @@ weather-logs/
 ### `weather_logs` (tabla principal)
 
 | Columna | Tipo | Descripción |
-|---------|------|-------------|
+| --- | --- | --- |
 | `id` | UUID | Clave primaria |
 | `station_id` | VARCHAR(50) | ID de la estación |
 | `station_name` | VARCHAR(100) | Nombre legible |
@@ -159,7 +159,7 @@ Mensajes que no pudieron procesarse, con detalle del error.
 Configurables vía variables de entorno:
 
 | Variable | Default | Descripción |
-|----------|---------|-------------|
+| --- | --- | --- |
 | `TEMP_MIN` | -50 | Temperatura mínima °C |
 | `TEMP_MAX` | 60 | Temperatura máxima °C |
 | `HUMIDITY_MIN` | 0 | Humedad mínima % |
@@ -265,3 +265,15 @@ make query-alerts
 
 Sistema desarrollado como prototipo académico de gestión de logs meteorológicos distribuidos.  
 Licencia MIT.
+
+---
+
+## Documentación adicional
+
+He añadido documentación y scripts de entrega en la carpeta `docs/` y `scripts/`.
+
+- **Arquitectura y diagrama visual:** docs/architecture.md
+- **Checklist de entregables y guía de publicación de video:** docs/DELIVERABLES.md
+- **Scripts de inicialización y pruebas:** scripts/init_db.sh, scripts/init_db.ps1, scripts/run_validation_tests.sh
+
+Sigue las instrucciones en `docs/DELIVERABLES.md` para generar el video demostrativo, ejecutar las pruebas y publicar en el foro.

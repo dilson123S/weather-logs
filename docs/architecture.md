@@ -1,4 +1,4 @@
-## Esquema visual - Arquitectura
+# Esquema visual - Arquitectura
 
 Diagrama de alto nivel del sistema (Mermaid):
 

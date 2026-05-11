@@ -20,13 +20,13 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-2. Graba un video de 2–5 minutos mostrando:
-   - Acceso al RabbitMQ UI (http://localhost:15672)
-   - Panel de Grafana (http://localhost:3000)
+1. Graba un video de 2–5 minutos mostrando:
+   - Acceso al [RabbitMQ UI](http://localhost:15672)
+   - Panel de [Grafana](http://localhost:3000)
    - Ejecución de consultas en la BD (`make query-logs`)
    - Publicación/consumo de mensajes (logs de producer/consumer)
 
-3. Exporta el video en MP4 y súbelo al foro asignado.
+1. Exporta el video en MP4 y súbelo al foro asignado.
 
 ### Publicar en el foro
 
